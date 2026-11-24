@@ -73,5 +73,7 @@ fails closed if Codex cannot load the configured `symphony-workspace` profile.
   volume or secret files in its workspace. Tracker credentials are removed from the app-server and
   shell environment. The sandbox network proxy allows only GitHub, npm, Node.js, and crates.io
   domains.
+- The service drops all Linux capabilities. Its container uses `seccomp=unconfined` so Codex's
+  Bubblewrap sandbox can create unprivileged user namespaces; this setting applies only to Symphony.
 - The target repository's Windows Rust/Tauri check remains on its existing self-hosted runner. The
   Symphony service does not restart or administer that runner.

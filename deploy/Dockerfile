@@ -11,7 +11,7 @@ ENV CODEX_HOME=/var/lib/codex \
     PNPM_HOME=/pnpm
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends bash build-essential ca-certificates curl git passwd \
+    && apt-get install -y --no-install-recommends bash bubblewrap build-essential ca-certificates curl git passwd \
     && rm -rf /var/lib/apt/lists/* \
     && rm -f /usr/local/bin/pnpm \
     && npm install --global pnpm@12.15.0 @openai/codex@0.172.0
