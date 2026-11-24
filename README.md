@@ -34,6 +34,18 @@ help with the setup:
 > Set up Symphony for my repository based on
 > https://github.com/openai/symphony/blob/main/elixir/README.md
 
+## Mesrine67 Dokploy service
+
+This fork contains the deployment for the local Dokploy instance and runs one Codex worker for the
+Linear project `Symphony`. It reads `Todo` and `In Progress` issues and hands completed PRs to a
+person in `In Review`. It never merges a PR.
+
+The service target is fixed to [`Mesrine67/hebergtonserv-desktop`](https://github.com/Mesrine67/hebergtonserv-desktop).
+GitHub writes go through host-side `github_publish_pr` and `github_pr_checks` tools that accept
+only issue-scoped branches and PRs against `main`. The GitHub token is removed before Codex starts.
+See [`deploy/README.md`](deploy/README.md) for the pinned image, Dokploy Compose file, local storage,
+and the required one-time credentials setup.
+
 ---
 
 ## License

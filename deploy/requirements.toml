@@ -1,0 +1,4 @@
+default_permissions = "symphony-workspace"
+
+[allowed_permission_profiles]
+"symphony-workspace" = true

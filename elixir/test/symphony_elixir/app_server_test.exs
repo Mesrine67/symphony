@@ -541,7 +541,8 @@ defmodule SymphonyElixir.AppServerTest do
       write_workflow_file!(Workflow.workflow_file_path(),
         workspace_root: workspace_root,
         codex_command: "#{codex_binary} app-server",
-        codex_approval_policy: "never"
+        codex_approval_policy: "never",
+        codex_permission_profile: "symphony-workspace"
       )
 
       issue = %Issue{
@@ -580,20 +581,28 @@ defmodule SymphonyElixir.AppServerTest do
                    |> String.trim_leading("JSON:")
                    |> Jason.decode!()
 
-                 payload["id"] == 2 and
-                   case get_in(payload, ["params", "dynamicTools"]) do
-                     [
-                       %{
-                         "description" => description,
-                         "inputSchema" => %{"required" => ["query"]},
-                         "name" => "linear_graphql"
-                       }
-                     ] ->
-                       description =~ "Linear"
+                 if payload["id"] == 2 do
+                   tools = get_in(payload, ["params", "dynamicTools"])
+                   names = Enum.map(tools, & &1["name"])
 
-                     _ ->
-                       false
-                   end
+                   names == ["linear_graphql", "github_publish_pr", "github_pr_checks"] and
+                     hd(tools)["description"] =~ "Linear" and
+                     get_in(payload, ["params", "permissions"]) == "symphony-workspace" and
+                     not Map.has_key?(payload["params"], "sandbox")
+                 else
+                   false
+                 end
+               else
+                 false
+               end
+             end)
+
+      assert Enum.any?(lines, fn line ->
+               if String.starts_with?(line, "JSON:") do
+                 payload = line |> String.trim_leading("JSON:") |> Jason.decode!()
+
+                 payload["method"] == "turn/start" and
+                   not Map.has_key?(payload["params"], "sandboxPolicy")
                else
                  false
                end

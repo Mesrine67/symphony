@@ -1,0 +1,47 @@
+default_permissions = "symphony-workspace"
+
+[features]
+network_proxy = true
+
+[shell_environment_policy]
+inherit = "core"
+ignore_default_excludes = false
+
+[shell_environment_policy.filters]
+"CODEX_HOME" = "exclude"
+"GH_*" = "exclude"
+"GITHUB_*" = "exclude"
+"LINEAR_*" = "exclude"
+"*_TOKEN" = "exclude"
+"*_SECRET" = "exclude"
+"*_PASSWORD" = "exclude"
+
+[permissions.symphony-workspace]
+description = "Work inside one Symphony issue workspace with credential paths denied."
+extends = ":workspace"
+
+[permissions.symphony-workspace.filesystem]
+glob_scan_max_depth = 6
+"/var/lib/codex" = "deny"
+
+[permissions.symphony-workspace.filesystem.":workspace_roots"]
+"**/.env*" = "deny"
+"**/*.pem" = "deny"
+"**/*.p12" = "deny"
+"**/id_*" = "deny"
+"**/.aws/**" = "deny"
+"**/.kube/**" = "deny"
+
+[permissions.symphony-workspace.network]
+enabled = true
+
+[permissions.symphony-workspace.network.domains]
+"github.com" = "allow"
+"*.github.com" = "allow"
+"*.githubusercontent.com" = "allow"
+"registry.npmjs.org" = "allow"
+"*.npmjs.org" = "allow"
+"nodejs.org" = "allow"
+"*.nodejs.org" = "allow"
+"crates.io" = "allow"
+"*.crates.io" = "allow"

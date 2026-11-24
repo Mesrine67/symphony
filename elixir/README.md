@@ -231,6 +231,12 @@ codex:
   with the session-bound endpoint/token and strips declared token environment variables from the
   Codex child. `project_slug` scopes scheduler reads, not raw tool calls; the tool can access
   whatever the configured Linear token can access.
+- Dokploy fork integration: Linear-backed sessions also advertise `github_publish_pr` and
+  `github_pr_checks`. The publisher is fixed to `Mesrine67/hebergtonserv-desktop`, derives its
+  branch from the Linear issue identifier, writes text-file trees through the GitHub API, and opens
+  or updates PRs against `main`. It rejects paths outside the repository, limits requests to 50
+  files / 512 KiB, never force-updates branches, and has no merge operation. GitHub and Linear token
+  environment variables are removed from the Codex app-server process before it starts.
 - Responsibility and errors: `linear_graphql` adds no idempotency key, retry, scope guard, or
   rate-limit policy, so workflows own idempotent mutations and handling provider errors. Read/config
   failures use `{:error, :missing_linear_api_token}`, `{:error, :missing_linear_project_slug}`,

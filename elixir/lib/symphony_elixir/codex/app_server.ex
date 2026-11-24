@@ -17,6 +17,7 @@ defmodule SymphonyElixir.Codex.AppServer do
           approval_policy: String.t() | map(),
           auto_approve_requests: boolean(),
           thread_sandbox: String.t(),
+          permission_profile: String.t() | nil,
           turn_sandbox_policy: map(),
           thread_id: String.t(),
           workspace: Path.t(),
@@ -54,6 +55,7 @@ defmodule SymphonyElixir.Codex.AppServer do
            approval_policy: session_policies.approval_policy,
            auto_approve_requests: session_policies.approval_policy == "never",
            thread_sandbox: session_policies.thread_sandbox,
+           permission_profile: session_policies.permission_profile,
            turn_sandbox_policy: session_policies.turn_sandbox_policy,
            thread_id: thread_id,
            workspace: expanded_workspace,
@@ -75,6 +77,7 @@ defmodule SymphonyElixir.Codex.AppServer do
           metadata: metadata,
           approval_policy: approval_policy,
           auto_approve_requests: auto_approve_requests,
+          permission_profile: permission_profile,
           turn_sandbox_policy: turn_sandbox_policy,
           thread_id: thread_id,
           workspace: workspace,
@@ -91,7 +94,16 @@ defmodule SymphonyElixir.Codex.AppServer do
         DynamicTool.execute(tool, arguments, dynamic_tool_binding, issue: issue)
       end)
 
-    case start_turn(port, thread_id, prompt, issue, workspace, approval_policy, turn_sandbox_policy) do
+    case start_turn(
+           port,
+           thread_id,
+           prompt,
+           issue,
+           workspace,
+           approval_policy,
+           turn_sandbox_policy,
+           permission_profile
+         ) do
       {:ok, turn_id} ->
         session_id = "#{thread_id}-#{turn_id}"
         Logger.info("Codex session started for #{issue_context(issue)} session_id=#{session_id}")
@@ -314,18 +326,30 @@ defmodule SymphonyElixir.Codex.AppServer do
   defp start_thread(
          port,
          workspace,
-         %{approval_policy: approval_policy, thread_sandbox: thread_sandbox},
+         %{
+           approval_policy: approval_policy,
+           thread_sandbox: thread_sandbox,
+           permission_profile: permission_profile
+         },
          dynamic_tool_binding
        ) do
+    thread_params = %{
+      "approvalPolicy" => approval_policy,
+      "cwd" => workspace,
+      "dynamicTools" => dynamic_tool_binding.tool_specs
+    }
+
+    thread_params =
+      if is_binary(permission_profile) and String.trim(permission_profile) != "" do
+        Map.put(thread_params, "permissions", permission_profile)
+      else
+        Map.put(thread_params, "sandbox", thread_sandbox)
+      end
+
     send_message(port, %{
       "method" => "thread/start",
       "id" => @thread_start_id,
-      "params" => %{
-        "approvalPolicy" => approval_policy,
-        "sandbox" => thread_sandbox,
-        "cwd" => workspace,
-        "dynamicTools" => dynamic_tool_binding.tool_specs
-      }
+      "params" => thread_params
     })
 
     case await_response(port, @thread_start_id) do
@@ -340,23 +364,40 @@ defmodule SymphonyElixir.Codex.AppServer do
     end
   end
 
-  defp start_turn(port, thread_id, prompt, issue, workspace, approval_policy, turn_sandbox_policy) do
+  defp start_turn(
+         port,
+         thread_id,
+         prompt,
+         issue,
+         workspace,
+         approval_policy,
+         turn_sandbox_policy,
+         permission_profile
+       ) do
+    turn_params = %{
+      "threadId" => thread_id,
+      "input" => [
+        %{
+          "type" => "text",
+          "text" => prompt
+        }
+      ],
+      "cwd" => workspace,
+      "title" => "#{issue.identifier}: #{issue.title}",
+      "approvalPolicy" => approval_policy
+    }
+
+    turn_params =
+      if is_binary(permission_profile) and String.trim(permission_profile) != "" do
+        turn_params
+      else
+        Map.put(turn_params, "sandboxPolicy", turn_sandbox_policy)
+      end
+
     send_message(port, %{
       "method" => "turn/start",
       "id" => @turn_start_id,
-      "params" => %{
-        "threadId" => thread_id,
-        "input" => [
-          %{
-            "type" => "text",
-            "text" => prompt
-          }
-        ],
-        "cwd" => workspace,
-        "title" => "#{issue.identifier}: #{issue.title}",
-        "approvalPolicy" => approval_policy,
-        "sandboxPolicy" => turn_sandbox_policy
-      }
+      "params" => turn_params
     })
 
     case await_response(port, @turn_start_id) do

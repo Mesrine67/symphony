@@ -1,0 +1,6 @@
+.git
+work/
+**/_build
+**/deps
+**/bin/symphony
+**/node_modules
