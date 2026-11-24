@@ -27,6 +27,7 @@ services:
       PNPM_HOME: /pnpm
     volumes:
       - /mnt/d/SymphonyData/workspaces:/workspaces
+      - symphony-logs:/app/log
       - symphony-codex-home:/var/lib/codex
       - symphony-package-cache:/pnpm
     healthcheck:
@@ -51,6 +52,8 @@ services:
         window: 60s
 
 volumes:
+  symphony-logs:
+    name: symphony-logs
   symphony-codex-home:
     name: symphony-codex-home
   symphony-package-cache:

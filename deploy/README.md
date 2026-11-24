@@ -1,14 +1,16 @@
 # Local Dokploy deployment
 
 This fork targets the single local Dokploy instance running in WSL. The stack has one replica, no
-published ports, and no Docker socket mount. Dokploy logs and the container health check are the
-operator surface; the dashboard binds only to the container's loopback interface.
+published ports, and no Docker socket mount. The container health check and startup output are
+available in Dokploy; rotated runtime logs persist under `/app/log` in the `symphony-logs` volume.
+The dashboard binds only to the container's loopback interface.
 
 ## Storage
 
 - Issue workspaces use `D:\SymphonyData\workspaces`, mounted in the container at `/workspaces`.
 - The Codex ChatGPT login lives in the named `symphony-codex-home` volume on Dokploy's WSL disk.
 - The pnpm/Corepack package cache lives in `symphony-package-cache` on the same WSL disk.
+- Rotated application logs live in the `symphony-logs` volume mounted at `/app/log`.
 - Docker image layers and named volumes are stored with Dokploy's WSL data. Keep the external
   `INATECK_STORAGE_1` drive connected while Docker is running.
 
@@ -26,8 +28,9 @@ Before the service can run, set these variables in Dokploy's Compose environment
 
 - `LINEAR_API_KEY`: a Linear API key that can read and update issues in the MIK team.
 - `GITHUB_TOKEN`: a fine-grained token scoped only to `Mesrine67/hebergtonserv-desktop`, with
-  Contents read/write, Pull requests read/write, and Checks read. Repository metadata access is
-  required by GitHub and is read-only.
+  Contents read/write and Pull requests read/write. Repository metadata access is required by GitHub
+  and is read-only. The target repository is public, so Symphony reads CI checks anonymously and the
+  token does not need the Checks permission.
 
 The entrypoint exits with a short message when either value is missing. It also refuses to start
 until `codex login status` succeeds for the persistent CODEX_HOME volume.

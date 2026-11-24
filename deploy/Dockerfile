@@ -30,8 +30,8 @@ RUN chmod 0755 /usr/local/bin/symphony-entrypoint \
     && mix escript.build \
     && groupadd --gid 1000 symphony \
     && useradd --uid 1000 --gid 1000 --create-home --home-dir /home/symphony --shell /bin/sh symphony \
-    && mkdir -p /var/lib/codex /workspaces /pnpm \
-    && chown -R 1000:1000 /var/lib/codex /workspaces /pnpm /home/symphony
+    && mkdir -p /var/lib/codex /workspaces /pnpm /app/log \
+    && chown -R 1000:1000 /var/lib/codex /workspaces /pnpm /home/symphony /app/log
 
 USER 1000:1000
 

@@ -99,6 +99,64 @@ defmodule SymphonyElixir.GitHub.SymphonyToolTest do
     assert Jason.decode!(response["output"])["pull_request"] == nil
   end
 
+  test "reads public pull request checks anonymously" do
+    test_pid = self()
+    tracker_settings = github_tracker_settings()
+
+    response =
+      LinearAdapter.execute_agent_tool(
+        "github_pr_checks",
+        %{},
+        issue: %{identifier: "MIK-7"},
+        tracker_settings: tracker_settings,
+        github_client: fn method, path, params, body, request_options ->
+          send(test_pid, {:github_request, method, path, params, body, request_options})
+
+          case path do
+            "/repos/Mesrine67/hebergtonserv-desktop/pulls" ->
+              {:ok,
+               %{
+                 status: 200,
+                 body: [%{"number" => 7, "head" => %{"sha" => "head-sha"}}]
+               }}
+
+            "/repos/Mesrine67/hebergtonserv-desktop/commits/head-sha/check-runs" ->
+              {:ok,
+               %{
+                 status: 200,
+                 body: %{
+                   "check_runs" => [
+                     %{
+                       "name" => "CI",
+                       "status" => "completed",
+                       "conclusion" => "success",
+                       "html_url" => "https://github.com/Mesrine67/hebergtonserv-desktop/actions"
+                     }
+                   ]
+                 }
+               }}
+
+            "/repos/Mesrine67/hebergtonserv-desktop/commits/head-sha/status" ->
+              {:ok, %{status: 200, body: %{"state" => "success", "total_count" => 1, "statuses" => []}}}
+          end
+        end
+      )
+
+    assert response["success"]
+    output = Jason.decode!(response["output"])
+    assert output["checks"]["check_runs"] == [%{"name" => "CI", "status" => "completed", "conclusion" => "success", "html_url" => "https://github.com/Mesrine67/hebergtonserv-desktop/actions"}]
+    assert output["checks"]["combined_status"]["state"] == "success"
+
+    assert_received {:github_request, "GET", "/repos/Mesrine67/hebergtonserv-desktop/pulls", _, nil, pull_options}
+    refute Keyword.get(pull_options, :anonymous, false)
+
+    assert_received {:github_request, "GET", "/repos/Mesrine67/hebergtonserv-desktop/commits/head-sha/check-runs", %{}, nil, check_options}
+    assert Keyword.get(check_options, :anonymous)
+
+    assert_received {:github_request, "GET", "/repos/Mesrine67/hebergtonserv-desktop/commits/head-sha/status", %{}, nil, status_options}
+    assert Keyword.get(status_options, :anonymous)
+  end
+
   test "rejects another repository and unsafe paths before making a GitHub request" do
     settings = github_tracker_settings(%{"repo" => "another/repo"})
 

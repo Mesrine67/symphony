@@ -247,10 +247,26 @@ defmodule SymphonyElixir.GitHub.SymphonyTool do
 
   defp checks_for_pull_request(%{"head" => %{"sha" => sha}}, tracker_settings, opts) do
     with {:ok, checks} when is_map(checks) <-
-           api_body("GET", "/repos/#{@repository}/commits/#{sha}/check-runs", nil, tracker_settings, opts),
+           api_body(
+             "GET",
+             "/repos/#{@repository}/commits/#{sha}/check-runs",
+             nil,
+             tracker_settings,
+             opts,
+             [200],
+             anonymous: true
+           ),
          check_runs when is_list(check_runs) <- Map.get(checks, "check_runs", []),
          {:ok, statuses} when is_map(statuses) <-
-           api_body("GET", "/repos/#{@repository}/commits/#{sha}/status", nil, tracker_settings, opts) do
+           api_body(
+             "GET",
+             "/repos/#{@repository}/commits/#{sha}/status",
+             nil,
+             tracker_settings,
+             opts,
+             [200],
+             anonymous: true
+           ) do
       check_runs = Enum.map(check_runs, fn check -> Map.take(check, ["name", "status", "conclusion", "html_url"]) end)
       {:ok, %{check_runs: check_runs, combined_status: Map.take(statuses, ["state", "total_count", "statuses"])}}
     else
@@ -355,16 +371,18 @@ defmodule SymphonyElixir.GitHub.SymphonyTool do
     end
   end
 
-  defp api_body(method, path, body, tracker_settings, opts, accepted_statuses \\ [200]) do
-    with {:ok, %{body: response_body}} <- api_request(method, path, body, tracker_settings, opts, accepted_statuses) do
+  defp api_body(method, path, body, tracker_settings, opts, accepted_statuses \\ [200], request_options \\ []) do
+    with {:ok, %{body: response_body}} <-
+           api_request(method, path, body, tracker_settings, opts, accepted_statuses, %{}, request_options) do
       {:ok, response_body}
     end
   end
 
-  defp api_request(method, path, body, tracker_settings, opts, accepted_statuses, params \\ %{}) do
+  defp api_request(method, path, body, tracker_settings, opts, accepted_statuses, params \\ %{}, request_options \\ []) do
     github_client = Keyword.get(opts, :github_client, &Client.request/5)
+    client_options = Keyword.put(request_options, :tracker_settings, tracker_settings)
 
-    case github_client.(method, path, params, body, tracker_settings: tracker_settings) do
+    case github_client.(method, path, params, body, client_options) do
       {:ok, %{status: status, body: response_body} = response} when is_integer(status) ->
         if status in accepted_statuses do
           {:ok, Map.put(response, :body, response_body)}
