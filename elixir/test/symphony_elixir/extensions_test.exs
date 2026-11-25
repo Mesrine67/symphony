@@ -224,10 +224,12 @@ defmodule SymphonyElixir.ExtensionsTest do
 
     write_workflow_file!(Workflow.workflow_file_path(), tracker_kind: "linear")
     assert SymphonyElixir.Tracker.adapter() == Adapter
-    assert SymphonyElixir.Tracker.bind_agent_tools().secret_environment_names == ["LINEAR_API_KEY"]
+
+    assert Enum.sort(SymphonyElixir.Tracker.bind_agent_tools().secret_environment_names) ==
+             Enum.sort(["LINEAR_API_KEY", "GITHUB_TOKEN", "GH_TOKEN", "GITHUB_ENTERPRISE_TOKEN", "GH_ENTERPRISE_TOKEN"])
   end
 
-  test "linear adapter delegates reads and advertises its native agent tool" do
+  test "linear adapter delegates reads and advertises scoped publishing tools" do
     Application.put_env(:symphony_elixir, :linear_client_module, FakeLinearClient)
 
     assert {:ok, ["Todo"]} = Adapter.fetch_issues_by_states(["Todo"])
@@ -236,7 +238,11 @@ defmodule SymphonyElixir.ExtensionsTest do
     assert {:ok, ["issue-1"]} = Adapter.fetch_issues_by_ids(["issue-1"])
     assert_receive {:fetch_issues_by_ids_called, ["issue-1"]}
 
-    assert [%{"name" => "linear_graphql"}] = Adapter.agent_tool_specs()
+    assert Enum.map(Adapter.agent_tool_specs(), & &1["name"]) == [
+             "linear_graphql",
+             "github_publish_pr",
+             "github_pr_checks"
+           ]
   end
 
   test "phoenix observability api preserves state, issue, and refresh responses" do

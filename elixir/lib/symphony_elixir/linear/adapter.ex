@@ -5,6 +5,8 @@ defmodule SymphonyElixir.Linear.Adapter do
 
   @behaviour SymphonyElixir.Tracker
 
+  alias SymphonyElixir.GitHub.Client, as: GitHubClient
+  alias SymphonyElixir.GitHub.SymphonyTool
   alias SymphonyElixir.Linear.{AgentTool, Client}
   alias SymphonyElixir.Tracker.Issue
 
@@ -35,15 +37,22 @@ defmodule SymphonyElixir.Linear.Adapter do
   def fetch_issues_by_ids(issue_ids), do: client_module().fetch_issues_by_ids(issue_ids)
 
   @spec agent_tool_specs() :: [map()]
-  def agent_tool_specs, do: AgentTool.tool_specs()
+  def agent_tool_specs, do: AgentTool.tool_specs() ++ SymphonyTool.tool_specs()
 
   @spec execute_agent_tool(String.t(), term(), keyword()) :: map()
-  def execute_agent_tool(tool, arguments, opts) do
-    AgentTool.execute(tool, arguments, opts)
-  end
+  def execute_agent_tool("github_publish_pr" = tool, arguments, opts),
+    do: SymphonyTool.execute(tool, arguments, opts)
+
+  def execute_agent_tool("github_pr_checks" = tool, arguments, opts),
+    do: SymphonyTool.execute(tool, arguments, opts)
+
+  def execute_agent_tool(tool, arguments, opts), do: AgentTool.execute(tool, arguments, opts)
 
   @spec secret_environment_names(map()) :: [String.t()]
-  def secret_environment_names(tracker_settings), do: tracker_settings.secret_environment_names
+  def secret_environment_names(tracker_settings) do
+    (tracker_settings.secret_environment_names ++ GitHubClient.secret_environment_names(tracker_settings))
+    |> Enum.uniq()
+  end
 
   defp client_module do
     Application.get_env(:symphony_elixir, :linear_client_module, Client)

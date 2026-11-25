@@ -1015,6 +1015,7 @@ defmodule SymphonyElixir.WorkspaceAndConfigTest do
     assert config.worker.max_concurrent_agents_per_host == nil
     assert config.agent.max_concurrent_agents == 10
     assert config.codex.command == "codex app-server"
+    assert config.codex.permission_profile == nil
 
     assert config.codex.approval_policy == %{
              "reject" => %{
@@ -1510,6 +1511,16 @@ defmodule SymphonyElixir.WorkspaceAndConfigTest do
                "writableRoots" => ["relative/path"],
                "networkAccess" => true
              }
+
+      assert runtime_settings.permission_profile == nil
+
+      write_workflow_file!(Workflow.workflow_file_path(),
+        workspace_root: workspace_root,
+        codex_permission_profile: "symphony-workspace"
+      )
+
+      assert {:ok, runtime_settings} = Config.codex_runtime_settings(issue_workspace)
+      assert runtime_settings.permission_profile == "symphony-workspace"
 
       write_workflow_file!(Workflow.workflow_file_path(),
         workspace_root: workspace_root,

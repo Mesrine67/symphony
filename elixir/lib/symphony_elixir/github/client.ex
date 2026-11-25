@@ -45,10 +45,16 @@ defmodule SymphonyElixir.GitHub.Client do
   def request(method, path, params, body, opts \\ [])
       when is_binary(method) and is_binary(path) and is_map(params) and is_list(opts) do
     tracker_settings = Keyword.get_lazy(opts, :tracker_settings, fn -> Config.settings!().tracker end)
-    request_fun = Keyword.get(opts, :request_fun, &perform_request/5)
+    request_fun = Keyword.get(opts, :request_fun)
 
     with {:ok, github_settings} <- settings(tracker_settings) do
-      request_fun.(method, path, params, body, github_settings)
+      github_settings = Map.put(github_settings, :anonymous, Keyword.get(opts, :anonymous, false))
+
+      if is_function(request_fun, 5) do
+        request_fun.(method, path, params, body, github_settings)
+      else
+        perform_request(method, path, params, body, github_settings)
+      end
     end
   end
 
@@ -268,7 +274,7 @@ defmodule SymphonyElixir.GitHub.Client do
       request_opts = [
         method: request_method,
         url: settings.api_url <> path,
-        headers: github_headers(settings.token),
+        headers: github_headers(settings.token, not Map.get(settings, :anonymous, false)),
         params: params,
         connect_options: [timeout: 30_000]
       ]
@@ -352,13 +358,14 @@ defmodule SymphonyElixir.GitHub.Client do
     |> Enum.map_join("/", fn segment -> URI.encode(segment, &URI.char_unreserved?/1) end)
   end
 
-  defp github_headers(token) do
-    [
+  defp github_headers(token, authenticated?) do
+    headers = [
       {"Accept", "application/vnd.github+json"},
-      {"Authorization", "Bearer #{token}"},
       {"X-GitHub-Api-Version", @api_version},
       {"User-Agent", @user_agent}
     ]
+
+    if authenticated?, do: [{"Authorization", "Bearer #{token}"} | headers], else: headers
   end
 
   defp github_state_query(states) do

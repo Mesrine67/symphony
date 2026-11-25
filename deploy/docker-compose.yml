@@ -1,0 +1,60 @@
+services:
+  symphony:
+    image: symphony-elixir:codex-0.172.0
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    init: true
+    user: "1000:1000"
+    cap_drop:
+      - ALL
+    security_opt:
+      - seccomp=unconfined
+    restart: "on-failure:3"
+    cpus: 1.50
+    mem_limit: 2g
+    mem_reservation: 256m
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=512m
+    environment:
+      CODEX_HOME: /var/lib/codex
+      COREPACK_HOME: /pnpm/corepack
+      LINEAR_API_KEY: ${LINEAR_API_KEY:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      npm_config_cache: /pnpm/npm-cache
+      npm_config_store_dir: /pnpm/store
+      PNPM_HOME: /pnpm
+    volumes:
+      - /mnt/d/SymphonyData/workspaces:/workspaces
+      - symphony-logs:/app/log
+      - symphony-codex-home:/var/lib/codex
+      - symphony-package-cache:/pnpm
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:4000/api/v1/state >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "1.50"
+          memory: 2G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 60s
+
+volumes:
+  symphony-logs:
+    name: symphony-logs
+  symphony-codex-home:
+    name: symphony-codex-home
+  symphony-package-cache:
+    name: symphony-package-cache
